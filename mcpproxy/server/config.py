@@ -11,13 +11,18 @@ from ..models.schemas import EmbedderType, ProxyConfig, ServerConfig
 class ConfigLoader:
     """Configuration loader supporting Cursor IDE style JSON config."""
 
-    def __init__(self, config_path: str = "mcp_config.json"):
-        self.config_path = Path(config_path)
+    def __init__(self, config_path: str | None = None):
+        if config_path is None:
+            self.config_path = Path.home() / ".cursor" / "mcp_proxy.json"
+        else:
+            self.config_path = Path(config_path)
 
     def load_config(self) -> ProxyConfig:
         """Load configuration from JSON file and environment variables."""
         if not self.config_path.exists():
-            raise FileNotFoundError(f"Configuration file not found: {self.config_path}")
+            logger = get_logger()
+            logger.warning(f"Configuration file not found: {self.config_path}. Returning default configuration.")
+            return ProxyConfig(mcp_servers={}, embedder=EmbedderType.BM25, hf_model=None, top_k=5, tool_name_limit=60)
 
         with open(self.config_path) as f:
             config_data = json.load(f)
@@ -51,8 +56,12 @@ class ConfigLoader:
 
         return re.sub(r"\$\{([^}]+)\}", replace_var, text)
 
-    def create_sample_config(self, output_path: str = "mcp_config.json") -> None:
+    def create_sample_config(self, output_path: str | None = None) -> None:
         """Create a sample configuration file."""
+        if output_path is None:
+            output_path = str(Path.home() / ".cursor" / "mcp_proxy.json")
+        Path(output_path).parent.mkdir(parents=True, exist_ok=True)
+
         sample_config = {
             "mcpServers": {
                 "core-docs": {"url": "http://localhost:8000/sse"},

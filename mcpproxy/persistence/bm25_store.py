@@ -6,7 +6,7 @@ import numpy as np
 class BM25Store:
     """Simple store for BM25 that doesn't use faiss vectors."""
 
-    def __init__(self, index_path: str = "bm25_store", dimension: int = 1):
+    def __init__(self, index_path: str = "bm25_store", dimension: int = 1, initial_next_id: int | None = None):
         """Initialize BM25 store.
         
         Args:
@@ -15,7 +15,7 @@ class BM25Store:
         """
         self.index_path = index_path
         self.dimension = dimension
-        self.next_id = 0
+        self.next_id = initial_next_id if initial_next_id is not None else 0
 
     async def add_vector(self, vector: np.ndarray) -> int:
         """Add a placeholder vector and return its ID.

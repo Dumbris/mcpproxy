@@ -3,17 +3,17 @@
 import sys
 from pathlib import Path
 
-import numpy as np
+import numpy as np  # type: ignore[import-untyped]
 
 
 class FaissStore:
     """Faiss vector store for tool embeddings."""
 
-    def __init__(self, index_path: str = "tools.faiss", dimension: int = 384):
+    def __init__(self, index_path: str = "tools.faiss", dimension: int = 384, initial_next_id: int | None = None):
         self.index_path = Path(index_path)
         self.dimension = dimension
         self.index = None
-        self.next_id = 0
+        self.next_id = initial_next_id if initial_next_id is not None else 0
         # Ensure parent directory exists
         if self.index_path.parent != Path('.'):
             self.index_path.parent.mkdir(parents=True, exist_ok=True)
@@ -22,7 +22,7 @@ class FaissStore:
     def _init_index(self) -> None:
         """Initialize or load Faiss index."""
         try:
-            import faiss
+            import faiss  # type: ignore[import-untyped]
         except ImportError:
             print(
                 "\n❌ ERROR: Vector storage requires faiss-cpu but it's not installed.",
@@ -49,21 +49,29 @@ class FaissStore:
                     print("Recreating index with correct dimension...", file=sys.stderr)
                     self.index_path.unlink()  # Remove old index
                     self.index = faiss.IndexFlatL2(self.dimension)
-                    self.next_id = 0
+                    # If index is recreated, ensure next_id is at least the initial value (or 0)
+                    self.next_id = max(self.next_id, 0)
                 else:
-                    self.next_id = self.index.ntotal
+                    # If index is loaded successfully, use its ntotal as the basis for next_id,
+                    # but ensure it's at least the provided initial_next_id
+                    self.next_id = max(self.next_id, self.index.ntotal)
             except Exception as e:
                 print(f"Error loading existing index: {e}. Creating new index...", file=sys.stderr)
                 self.index_path.unlink(missing_ok=True)
                 self.index = faiss.IndexFlatL2(self.dimension)
-                self.next_id = 0
+                # If new index is created due to error, ensure next_id is at least the initial value (or 0)
+                self.next_id = max(self.next_id, 0)
         else:
             # Using IndexFlatL2 for exact search (can be changed to IndexIVFFlat for approximate)
             self.index = faiss.IndexFlatL2(self.dimension)
-            self.next_id = 0
+            # If new index, ensure next_id is at least the initial value (or 0)
+            self.next_id = max(self.next_id, 0)
 
     async def add_vector(self, vector: np.ndarray) -> int:
         """Add a vector to the index and return its ID."""
+        if self.index is None: # Add guard for None
+            raise RuntimeError("Faiss index not initialized.")
+
         # Ensure vector is the right shape
         if vector.ndim == 1:
             vector = vector.reshape(1, -1)
@@ -90,11 +98,11 @@ class FaissStore:
         # store vectors separately and rebuild the index periodically
         pass
 
-    async def search_similar(
+    async def search(
         self, query_vector: np.ndarray, k: int = 5
     ) -> list[tuple[int, float]]:
         """Search for similar vectors."""
-        if self.index.ntotal == 0:
+        if self.index is None or self.index.ntotal == 0: # Add guard for None and empty index
             return []
 
         # Ensure query vector is the right shape

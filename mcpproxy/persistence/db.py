@@ -167,6 +167,12 @@ class DatabaseManager:
             ).fetchall()
             return [ToolMetadata(**dict(row)) for row in rows]
 
+    async def get_max_faiss_vector_id(self) -> int | None:
+        """Get the maximum faiss_vector_id from the database."""
+        async with self.get_connection() as conn:
+            row = conn.execute("SELECT MAX(faiss_vector_id) FROM tools").fetchone()
+            return row[0] if row and row[0] is not None else None
+
     async def reset_database(self) -> None:
         """Reset database by dropping and recreating tables."""
         async with self.get_connection() as conn:

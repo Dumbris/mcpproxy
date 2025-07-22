@@ -10,11 +10,11 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Any
 
-import mcp.types as types
-from fastmcp import FastMCP
-from fastmcp.client import Client
+import mcp.types as types  # type: ignore[import-untyped]
+from fastmcp import FastMCP  # type: ignore[import-untyped]
+from fastmcp.client import Client  # type: ignore[import-untyped]
 from fastmcp.tools.tool import Tool  # type: ignore[import-not-found]
-from mcp.server.lowlevel.server import NotificationOptions
+from mcp.server.lowlevel.server import NotificationOptions  # type: ignore[import-untyped]
 
 from ..indexer.facade import IndexerFacade
 from ..logging import configure_logging, get_logger
@@ -220,6 +220,8 @@ class SmartMCPProxyServer:
             self.persistence = PersistenceFacade(
                 vector_dimension=vector_dimension, embedder_type=self.config.embedder
             )
+            # Initialize PersistenceFacade asynchronously
+            await self.persistence._ainit()
 
             # Reset data if requested
             if reset_data:

@@ -112,7 +112,9 @@ class IndexerFacade:
             "description": tool_obj.description,
             "parameters": tool_obj.parameters,
             "tags": list(tool_obj.tags) if tool_obj.tags else [],
-            "annotations": tool_obj.annotations,
+            "annotations": str(tool_obj.annotations)
+            if tool_obj.annotations
+            else None,
         }
         tool_hash = compute_tool_hash(
             tool_obj.name, tool_obj.description or "", tool_data
@@ -140,12 +142,14 @@ class IndexerFacade:
             vector = await self.embedder.embed_text(enhanced_text)
 
         # Store minimal metadata in persistence layer (only for hash-based change detection)
+        import json
+
         tool = ToolMetadata(
             name=tool_obj.name,
             description=tool_obj.description or "",
             hash=tool_hash,
             server_name=server_name,
-            params_json=None,  # We don't need to store full params in DB, Tool objects are in memory
+            params_json=json.dumps(tool_obj.parameters) if tool_obj.parameters else None,
         )
 
         await self.persistence.store_tool_with_vector(tool, vector)
